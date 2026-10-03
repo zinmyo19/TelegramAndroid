@@ -4838,6 +4838,8 @@ public class ChatActivity extends BaseFragment implements
         }
         removingFromParent = false;
         fragmentView = contentView = new ChatActivityFragmentView(context, parentLayout);
+        // DZ TG Player TV: remote hint bar at top (TV mode only, keeps the bottom input clear)
+        DzTvHintBar.attachTo(contentView, context, Gravity.TOP);
         invalidateBlurredSourcesView = new OnPostDrawView(context, true, this::invalidateMergedVisibleBlurredPositionsAndSourcesImpl);
         contentView.addView(invalidateBlurredSourcesView);
 
