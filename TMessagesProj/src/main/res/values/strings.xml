@@ -70,7 +70,7 @@
     <string name="formatterDay12HSec">h:mm:ss a</string>
     <string name="CopyWithoutProtocol">Copy without protocol</string>
     <!--fork settings view-->
-    <string name="ForkSettingsTitle">Fork Client Settings</string>
+    <string name="ForkSettingsTitle">DZ TG Player Settings</string>
     <string name="ForkCheckUpdate">Check updates</string>
     <string name="InAppCamera">Enable In-App Camera</string>
     <string name="InAppCameraInfo">In Attachments</string>
@@ -165,17 +165,17 @@
     <string name="LinkReplacementInvalid">Invalid expression</string>
     <string name="LinkReplacedOnPaste">Link replaced</string>
     <string name="ForkSettingsLock">Settings Lock</string>
-    <string name="ForkSettingsLockInfo">Use a separate 4-digit code to open Fork Client Settings. The code guards this settings screen only: clearing the app data or installing another build removes it.</string>
-    <string name="ForkSettingsLockUnlockInfo">Enter the code to open Fork Client Settings.</string>
+    <string name="ForkSettingsLockInfo">Use a separate 4-digit code to open DZ TG Player Settings. The code guards this settings screen only: clearing the app data or installing another build removes it.</string>
+    <string name="ForkSettingsLockUnlockInfo">Enter the code to open DZ TG Player Settings.</string>
     <string name="ForkSettingsLockConfirmCurrentCodeInfo">Enter the current code to change or remove it.</string>
     <string name="ForkSettingsLockConfirmCodeInfo">Enter the code again to confirm.</string>
     <string name="ForkSettingsLockCodesDoNotMatch">Codes don\'t match. Enter a new code.</string>
     <string name="ForkSettingsLockSetCode">Set code</string>
     <string name="ForkSettingsLockChangeCode">Change code</string>
     <string name="ForkSettingsLockRemoveCode">Remove code</string>
-    <string name="ForkSettingsLockRemoveCodeConfirm">Fork Client Settings will open without a code.</string>
-    <string name="AppName">Fork Client</string>
-    <string name="AppNameBeta">Fork Client</string>
+    <string name="ForkSettingsLockRemoveCodeConfirm">DZ TG Player Settings will open without a code.</string>
+    <string name="AppName">DZ TG Player</string>
+    <string name="AppNameBeta">DZ TG Player</string>
     <string name="AppNameFdroid">Forkgram</string>
     <string name="LanguageName">English</string>
     <string name="English">English</string>
