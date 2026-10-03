@@ -1507,6 +1507,21 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
         updateVideoPlayerTime();
     }
 
+    // DZ TV: D-pad seek in 10s steps for the video player seekbar (TV remote, no mouse needed)
+    private void seekVideoByDpad(long deltaMs) {
+        long duration = getVideoDuration();
+        if (duration == C.TIME_UNSET || duration <= 0 || videoPlayerSeekbar == null || videoPlayerSeekbarView == null) {
+            return;
+        }
+        long target = (long) (videoPlayerSeekbar.getProgress() * duration) + deltaMs;
+        target = Math.max(0, Math.min(duration, target));
+        videoPlayerSeekbar.setProgress(target / (float) duration);
+        videoPlayerSeekbarView.invalidate();
+        seekVideoOrWebTo(target);
+        showVideoSeekPreviewPosition(false);
+        needShowOnReady = false;
+    }
+
     private boolean isVideoPlaying() {
         if (photoViewerWebView != null && photoViewerWebView.isControllable()) {
             return photoViewerWebView.isPlaying();
@@ -9711,7 +9726,34 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             protected void onDraw(Canvas canvas) {
                 videoPlayerSeekbar.draw(canvas, this);
             }
+
+            @Override
+            public boolean dispatchKeyEvent(KeyEvent event) {
+                // DZ TV: D-pad LEFT/RIGHT seeks while the seekbar has focus
+                if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                    int keyCode = event.getKeyCode();
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                        seekVideoByDpad(-10000);
+                        return true;
+                    } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                        seekVideoByDpad(10000);
+                        return true;
+                    }
+                }
+                return super.dispatchKeyEvent(event);
+            }
+
+            @Override
+            protected void onFocusChanged(boolean gainFocus, int direction, Rect previouslyFocusedRect) {
+                super.onFocusChanged(gainFocus, direction, previouslyFocusedRect);
+                if (videoPlayerSeekbar != null) {
+                    videoPlayerSeekbar.setSelected(gainFocus);
+                    invalidate();
+                }
+            }
         };
+        videoPlayerSeekbarView.setFocusable(true);
+        videoPlayerSeekbarView.setBackgroundResource(R.drawable.dz_tv_focus_highlight);
         videoPlayerSeekbarView.setAccessibilityDelegate(accessibilityDelegate);
         videoPlayerSeekbarView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
         videoPlayerControlFrameLayout.addView(videoPlayerSeekbarView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
@@ -11266,6 +11308,17 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                 videoPlayerControlAnimator.cancel();
             }
             videoPlayerControlVisible = visible;
+            // DZ TV: move D-pad focus onto the seekbar when player controls appear (TV / non-touch
+            // mode only — touch behavior unchanged), and release focus when they hide.
+            if (videoPlayerSeekbarView != null) {
+                if (visible) {
+                    if (containerView != null && !containerView.isInTouchMode()) {
+                        videoPlayerSeekbarView.requestFocus();
+                    }
+                } else if (videoPlayerSeekbarView.hasFocus()) {
+                    videoPlayerSeekbarView.clearFocus();
+                }
+            }
 
             if (animated) {
                 if (visible) {
