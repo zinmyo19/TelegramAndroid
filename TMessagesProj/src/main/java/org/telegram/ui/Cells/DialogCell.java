@@ -692,6 +692,9 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
 
     public DialogCell(DialogsActivity fragment, Context context, boolean needCheck, boolean forceThreeLines, int account, Theme.ResourcesProvider resourcesProvider) {
         super(context);
+        // DZ TG Player TV: D-pad focusable with visible highlight
+        setFocusable(true);
+        setBackgroundResource(R.drawable.dz_tv_focus_highlight);
         storyParams.allowLongress = true;
         this.resourcesProvider = resourcesProvider;
         parentFragment = fragment;
@@ -3191,6 +3194,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
             checkBox.setColor(-1, Theme.key_windowBackgroundWhite, Theme.key_checkboxCheck);
             checkBox.setDrawUnchecked(false);
             checkBox.setDrawBackgroundAsArc(3);
+            checkBox.setFocusable(false);
             addView(checkBox);
         }
         checkBox.setChecked(checked, animated);
