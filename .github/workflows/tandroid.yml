@@ -115,3 +115,32 @@ jobs:
           name: ForkClient
           path: artifact/
 
+  release:
+    name: Create Release.
+    needs: linux
+    if: ${{ contains(github.event.head_commit.message, '[Release]') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3.1.0
+      - name: Download artifact
+        uses: actions/download-artifact@v4.3.0
+        with:
+          name: ForkClient
+          path: asset
+      - name: Get version info
+        run: |
+          find asset -name "*.apk" | head -1 | sed 's/.*ForkClient //;s/\.apk//' > version.txt
+          echo "VERSION=$(cat version.txt)" >> $GITHUB_ENV
+          echo "OFFICIAL_VERSION=$(cat version.txt | sed 's/..$//')" >> $GITHUB_ENV
+      - name: Create Release
+        uses: softprops/action-gh-release@v0.1.15
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          draft: true
+          files: asset/*
+          tag_name: ${{ env.VERSION }}
+          name: "ForkClient ${{ env.VERSION }}"
+          body: "— Updated to ${{ env.OFFICIAL_VERSION }} build of the official Telegram."
