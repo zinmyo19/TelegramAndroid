@@ -1039,6 +1039,11 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
     private Runnable hideActionBarRunnable = new Runnable() {
         @Override
         public void run() {
+            // DZ TV: keep controls visible while D-pad focus sits on a video control (TV remote navigation in progress)
+            if (isDpadFocusOnVideoControl()) {
+                scheduleActionBarHide();
+                return;
+            }
             if (videoPlayerControlVisible && isPlaying && !ApplicationLoader.mainInterfacePaused) {
                 if (menuItem != null && menuItem.isSubMenuShowing() || videoItem != null && videoItem.isSubMenuShowing()) {
                     return;
@@ -6105,6 +6110,11 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                 }
                 toggleActionBar(false, false);
             });
+            // DZ TV: D-pad focus on the fullscreen buttons (TV remote, no mouse needed)
+            fullscreenButton[a].setFocusable(true);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                fullscreenButton[a].setForeground(fullscreenButton[a].getContext().getDrawable(R.drawable.dz_tv_focus_highlight));
+            }
         }
 
         textSelectionHelper = new TextSelectionHelper.SimpleTextSelectionHelper(null, new DarkThemeResourceProvider()) {
@@ -7910,6 +7920,8 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                 onActionClick(true);
                 checkProgress(0, false, true);
             });
+            // DZ TV: teal focus ring on the play/pause overlay (already focusable)
+            playButtonAccessibilityOverlay.setBackgroundResource(R.drawable.dz_tv_focus_highlight);
             containerView.addView(playButtonAccessibilityOverlay, LayoutHelper.createFrame(64, 64, Gravity.CENTER));
         }
 
@@ -9753,6 +9765,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             }
         };
         videoPlayerSeekbarView.setFocusable(true);
+        videoPlayerSeekbarView.setId(View.generateViewId());
         videoPlayerSeekbarView.setBackgroundResource(R.drawable.dz_tv_focus_highlight);
         videoPlayerSeekbarView.setAccessibilityDelegate(accessibilityDelegate);
         videoPlayerSeekbarView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
@@ -9810,6 +9823,14 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             }
             parentActivity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         });
+        // DZ TV: D-pad focus on the exit-fullscreen button + focus navigation with the seekbar (TV remote, no mouse needed)
+        exitFullscreenButton.setId(View.generateViewId());
+        exitFullscreenButton.setFocusable(true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            exitFullscreenButton.setForeground(exitFullscreenButton.getContext().getDrawable(R.drawable.dz_tv_focus_highlight));
+        }
+        videoPlayerSeekbarView.setNextFocusUpId(exitFullscreenButton.getId());
+        exitFullscreenButton.setNextFocusDownId(videoPlayerSeekbarView.getId());
     }
 
     private int[] fixVideoWidthHeight(int w, int h) {
@@ -10366,6 +10387,25 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             AndroidUtilities.cancelRunOnUIThread(hideActionBarRunnable);
             AndroidUtilities.runOnUIThread(hideActionBarRunnable, delay);
         }
+    }
+
+    // DZ TV: true when D-pad focus is on one of the video player controls (TV / non-touch mode only)
+    private boolean isDpadFocusOnVideoControl() {
+        if (containerView == null || containerView.isInTouchMode()) {
+            return false;
+        }
+        View focused = containerView.findFocus();
+        if (focused == videoPlayerSeekbarView || focused == exitFullscreenButton || focused == playButtonAccessibilityOverlay) {
+            return true;
+        }
+        if (fullscreenButton != null) {
+            for (int a = 0; a < fullscreenButton.length; a++) {
+                if (focused == fullscreenButton[a]) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private boolean isAccessibilityEnabled() {
@@ -13590,6 +13630,21 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             }
         }
         isActionBarVisible = show;
+
+        // DZ TV: move D-pad focus onto the seekbar when video controls appear, clear it when they hide
+        // (TV / non-touch mode only — touch behavior unchanged)
+        if (containerView != null && !containerView.isInTouchMode() && isCurrentVideo) {
+            if (show && videoPlayerControlVisible && videoPlayerSeekbarView != null) {
+                videoPlayerSeekbarView.requestFocus();
+            } else if (!show) {
+                if (videoPlayerSeekbarView != null && videoPlayerSeekbarView.hasFocus()) {
+                    videoPlayerSeekbarView.clearFocus();
+                }
+                if (exitFullscreenButton != null && exitFullscreenButton.hasFocus()) {
+                    exitFullscreenButton.clearFocus();
+                }
+            }
+        }
 
         if (photoViewerWebView != null) {
             photoViewerWebView.setTouchDisabled(isActionBarVisible);
@@ -23975,6 +24030,20 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             int keyCode = event.getKeyCode();
             if (!muteVideo && sendPhotoType != SELECT_TYPE_AVATAR && isCurrentVideo && videoPlayer != null && event.getRepeatCount() == 0 && event.getAction() == KeyEvent.ACTION_DOWN && (event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_UP || event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_DOWN)) {
                 videoPlayer.setVolume(1.0f);
+            }
+            // DZ TV: OK on the TV remote shows the video controls like a tap (TV / non-touch mode only).
+            // A focused control button keeps the default behavior (OK activates it).
+            if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0 && isCurrentVideo && containerView != null && !containerView.isInTouchMode() &&
+                    (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER)) {
+                if (isDpadFocusOnVideoControl()) {
+                    return super.dispatchKeyEvent(event);
+                }
+                if (!isActionBarVisible) {
+                    toggleActionBar(true, true);
+                } else if (videoPlayerSeekbarView != null) {
+                    videoPlayerSeekbarView.requestFocus();
+                }
+                return true;
             }
             return super.dispatchKeyEvent(event);
         }
