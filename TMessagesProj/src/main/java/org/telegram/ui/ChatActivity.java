@@ -1267,6 +1267,7 @@ public class ChatActivity extends BaseFragment implements
 
     public final static int OPTION_VIEW_STATISTICS = 115;
     public final static int OPTION_WELCOME_REVERT = 116;
+    public final static int OPTION_OPEN_LINK = 117;
 
     private final static int[] allowedNotificationsDuringChatListAnimations = new int[]{
             NotificationCenter.messagesRead,
@@ -17443,6 +17444,15 @@ public class ChatActivity extends BaseFragment implements
         BaseCell cell = findMessageCell(dpadSelectedMessageId, true);
         if (cell == null) {
             return false;
+        }
+        // DZ TV: D-pad OK on a video/photo message opens it directly in the player, like a tap
+        if (cell instanceof ChatMessageCell) {
+            MessageObject messageObject = ((ChatMessageCell) cell).getMessageObject();
+            if (messageObject != null && !messageObject.isRoundVideo()
+                    && (messageObject.isVideo() || messageObject.type == MessageObject.TYPE_PHOTO)) {
+                openPhotoViewerForMessage((ChatMessageCell) cell, messageObject);
+                return true;
+            }
         }
         return createMenu(cell, true, true, cell.getWidth() / 2f, cell.getHeight() / 2f, true);
     }
@@ -34823,6 +34833,14 @@ public class ChatActivity extends BaseFragment implements
                 }
                 break;
             }
+            case OPTION_OPEN_LINK: {
+                // DZ TV: open the first URL found in the message, same path as tapping a link
+                String dzUrl = getDzFirstMessageUrl(selectedObject);
+                if (!TextUtils.isEmpty(dzUrl) && getParentActivity() != null) {
+                    processExternalUrl(0, dzUrl, null, null, false, false);
+                }
+                break;
+            }
             case OPTION_REPORT_CHAT: {
                 if (UserObject.isReplyUser(currentUser)) {
                     if (selectedObject.messageOwner.fwd_from != null) {
@@ -46456,6 +46474,48 @@ public class ChatActivity extends BaseFragment implements
         return -1;
     }
 
+    // DZ TV: returns the first URL found in the message (entities first, then plain text), or null.
+    private String getDzFirstMessageUrl(MessageObject messageObject) {
+        if (messageObject == null || messageObject.messageOwner == null) {
+            return null;
+        }
+        String[] texts = new String[]{messageObject.messageOwner.message, messageObject.caption != null ? messageObject.caption.toString() : null};
+        for (int t = 0; t < texts.length; t++) {
+            String text = texts[t];
+            if (text == null) {
+                continue;
+            }
+            if (t == 0 && messageObject.messageOwner.entities != null) {
+                for (TLRPC.MessageEntity entity : messageObject.messageOwner.entities) {
+                    if (entity instanceof TLRPC.TL_messageEntityTextUrl) {
+                        String url = ((TLRPC.TL_messageEntityTextUrl) entity).url;
+                        if (!TextUtils.isEmpty(url)) {
+                            return url;
+                        }
+                    } else if (entity instanceof TLRPC.TL_messageEntityUrl) {
+                        try {
+                            int start = Math.max(0, entity.offset);
+                            int end = Math.min(text.length(), entity.offset + entity.length);
+                            if (end > start) {
+                                return text.substring(start, end);
+                            }
+                        } catch (Exception e) {
+                            FileLog.e(e);
+                        }
+                    }
+                }
+            }
+            java.util.regex.Matcher m = android.util.Patterns.WEB_URL.matcher(text);
+            if (m.find()) {
+                String url = m.group();
+                if (!TextUtils.isEmpty(url)) {
+                    return url.startsWith("http") ? url : "http://" + url;
+                }
+            }
+        }
+        return null;
+    }
+
     public void fillMessageMenu(
         MessageObject primaryMessage,
 
@@ -46708,6 +46768,13 @@ public class ChatActivity extends BaseFragment implements
                     || canCopyPrivateLink(selectedObject))) {
                     items.add(LocaleController.getString(R.string.CopyLink));
                     options.add(OPTION_COPY_LINK);
+                    icons.add(R.drawable.msg_link);
+                }
+                // DZ TV: open the first URL found in the message (D-pad reachable links)
+                String dzFirstUrl = getDzFirstMessageUrl(selectedObject);
+                if (dzFirstUrl != null) {
+                    items.add("Open Link");
+                    options.add(OPTION_OPEN_LINK);
                     icons.add(R.drawable.msg_link);
                 }
                 if (selectedObject != null && selectedObject.messageOwner != null && selectedObject.messageOwner.action == null && currentChat != null && currentChat.forum && !isTopic && selectedObject.messageOwner != null && selectedObject.messageOwner.reply_to != null && selectedObject.messageOwner.reply_to.forum_topic) {
