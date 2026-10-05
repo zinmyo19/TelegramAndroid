@@ -24,6 +24,10 @@ public class DzTvHintBar {
         if (uiModeManager != null && uiModeManager.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION) {
             return true;
         }
+        // DZ TV build 12: also treat Leanback devices as TV (covers more TV boxes)
+        if (context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK)) {
+            return true;
+        }
         return !context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN);
     }
 

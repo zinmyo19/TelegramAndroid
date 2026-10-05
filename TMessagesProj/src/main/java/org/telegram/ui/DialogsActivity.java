@@ -226,6 +226,7 @@ import org.telegram.ui.Components.ChatAvatarContainer;
 import org.telegram.ui.Components.CombinedDrawable;
 import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.DzTvHintBar;
+import org.telegram.ui.Components.DzTvSidebar;
 import org.telegram.ui.Components.DialogsItemAnimator;
 import org.telegram.ui.Components.FilterTabsView;
 import org.telegram.ui.Components.FiltersListBottomSheet;
@@ -5632,6 +5633,67 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         checkUi_searchFieldStyle();
 
         ViewCompat.setOnApplyWindowInsetsListener(fragmentView, this::onApplyWindowInsets);
+
+        // DZ TG Player TV build 12: TeleTV-style navigation sidebar + TV theme.
+        // TV devices only (isTvMode); phones keep the standard drawer and theme untouched.
+        if (DzTvHintBar.isTvMode(context)) {
+            // TV theme: TeleTV OLED Midnight background on the dialogs screen
+            contentView.setBackgroundColor(0xFF0B141F);
+            // Make room for the 84dp rail: shrink MATCH_PARENT children via padding,
+            // then park the rail itself in the padded strip with a negative margin.
+            int railWidth = AndroidUtilities.dp(84);
+            contentView.setPadding(railWidth, 0, 0, 0);
+            DzTvSidebar sidebar = new DzTvSidebar(context);
+            sidebar.setOnNavigateListener(dest -> {
+                if (dest == DzTvSidebar.DEST_CONTACTS) {
+                    Bundle args = new Bundle();
+                    presentFragment(new ContactsActivity(args));
+                } else if (dest == DzTvSidebar.DEST_CALLS) {
+                    presentFragment(new CallLogActivity());
+                } else if (dest == DzTvSidebar.DEST_SETTINGS) {
+                    presentFragment(new SettingsActivity());
+                }
+                // DEST_CHATS: already here, just updates the selection highlight
+            });
+            FrameLayout.LayoutParams sidebarLp = new FrameLayout.LayoutParams(
+                    railWidth, FrameLayout.LayoutParams.MATCH_PARENT, Gravity.LEFT);
+            sidebarLp.leftMargin = -railWidth;
+            contentView.addView(sidebar, sidebarLp);
+            // D-pad focus chain: rail RIGHT -> dialog list; list LEFT -> rail.
+            if (viewPages != null && viewPages.length > 0 && viewPages[0] != null
+                    && viewPages[0].listView != null) {
+                int listId = View.generateViewId();
+                viewPages[0].listView.setId(listId);
+                sidebar.setNextFocusRightId(listId);
+                View firstItem = sidebar.getFirstItemView();
+                if (firstItem != null) {
+                    int railItemId = View.generateViewId();
+                    firstItem.setId(railItemId);
+                    viewPages[0].listView.setNextFocusLeftId(railItemId);
+                }
+                sidebar.setOnMoveRightListener(() -> {
+                    View list = viewPages[0].listView;
+                    // Focus the first visible dialog cell so D-pad keeps working in the list
+                    View focusedChild = null;
+                    if (list instanceof RecyclerListView) {
+                        RecyclerListView rv = (RecyclerListView) list;
+                        for (int i = 0; i < rv.getChildCount(); i++) {
+                            View child = rv.getChildAt(i);
+                            if (child != null && child.isFocusable()) {
+                                focusedChild = child;
+                                break;
+                            }
+                        }
+                    }
+                    if (focusedChild != null) {
+                        focusedChild.requestFocus();
+                    } else {
+                        list.requestFocus();
+                    }
+                });
+            }
+        }
+
         return fragmentView;
     }
 
