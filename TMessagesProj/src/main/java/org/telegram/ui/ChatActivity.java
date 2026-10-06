@@ -9293,6 +9293,13 @@ public class ChatActivity extends BaseFragment implements
         ViewCompat.setOnApplyWindowInsetsListener(fragmentView, this::onApplyWindowInsets);
         Timer.finish(t);
 
+        // DZ TG Player TV build 14: subtle TeleShield-style fade-in when a chat
+        // opens on TV. Fast, plain alpha — TV-safe. Phones keep default behavior.
+        if (org.telegram.ui.Components.DzTvHintBar.isTvMode(context)) {
+            fragmentView.setAlpha(0f);
+            fragmentView.animate().alpha(1f).setDuration(160).start();
+        }
+
         return fragmentView;
     }
 
