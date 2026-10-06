@@ -219,8 +219,17 @@ public class DzTvSidebar extends LinearLayout {
         if (dest < 0 || dest > 3) {
             return;
         }
+        boolean changed = dest != selected;
         selected = dest;
         updateSelection();
+        // DZ TG Player TV build 14: subtle TeleShield-style selection pulse.
+        // Fast and TV-safe (plain view alpha, no blur).
+        if (changed && itemBoxes[dest] != null) {
+            View box = itemBoxes[dest];
+            box.animate().cancel();
+            box.setAlpha(0.55f);
+            box.animate().alpha(1f).setDuration(140).start();
+        }
     }
 
     public int getSelected() {
