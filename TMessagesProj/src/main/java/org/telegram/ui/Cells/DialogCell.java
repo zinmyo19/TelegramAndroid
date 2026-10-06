@@ -695,6 +695,11 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
         // DZ TG Player TV: D-pad focusable with visible highlight
         setFocusable(true);
         setBackgroundResource(R.drawable.dz_tv_focus_highlight);
+        // DZ TG Player TV build 14: TeleShield-style roomier chat-list rows on TV
+        if (org.telegram.ui.Components.DzTvHintBar.isTvMode(context)) {
+            heightDefault = org.telegram.ui.Components.DzTvPolish.dialogRowHeightDefault();
+            heightThreeLines = org.telegram.ui.Components.DzTvPolish.dialogRowHeightThreeLines();
+        }
         storyParams.allowLongress = true;
         this.resourcesProvider = resourcesProvider;
         parentFragment = fragment;
