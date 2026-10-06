@@ -5638,7 +5638,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         // TV devices only (isTvMode); phones keep the standard drawer and theme untouched.
         if (DzTvHintBar.isTvMode(context)) {
             // TV theme: TeleTV OLED Midnight background on the dialogs screen
-            contentView.setBackgroundColor(0xFF0B141F);
+            // (build 14: pure OLED black list area, midnight sidebar rail)
+            contentView.setBackgroundColor(0xFF000000);
             // Make room for the 84dp rail: shrink MATCH_PARENT children via padding,
             // then park the rail itself in the padded strip with a negative margin.
             int railWidth = AndroidUtilities.dp(84);
