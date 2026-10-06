@@ -457,21 +457,15 @@ public class ApplicationLoader extends Application {
 
     public static void startPushService() {
         SharedPreferences preferences = MessagesController.getGlobalNotificationsSettings();
-        boolean enabled;
-        if (preferences.contains("pushService")) {
-            enabled = preferences.getBoolean("pushService", true);
-        } else {
-            enabled = MessagesController.getMainSettings(UserConfig.selectedAccount).getBoolean("keepAliveService", true);
+        // DZ TG Player: keep-alive push service permanently disabled. FCM can never
+        // register for this fork's package (google-services.json only lists
+        // org.telegram.messenger* entries), so this service only ever produced the
+        // persistent "Push service: tap to learn more" notification. Never start it.
+        boolean enabled = false;
+        if (!preferences.contains("pushService") || preferences.getBoolean("pushService", true)) {
             SharedPreferences.Editor editor = preferences.edit();
-            editor.putBoolean("pushService", enabled);
-            editor.putBoolean("pushConnection", enabled);
+            editor.putBoolean("pushService", false);
             editor.commit();
-            SharedPreferences preferencesCA = MessagesController.getNotificationsSettings(UserConfig.selectedAccount);
-            SharedPreferences.Editor editorCA = preferencesCA.edit();
-            editorCA.putBoolean("pushConnection", enabled);
-            editorCA.putBoolean("pushService", enabled);
-            editorCA.commit();
-            ConnectionsManager.getInstance(UserConfig.selectedAccount).setPushConnectionEnabled(true);
         }
         int pendingIntentFlags;
         if (Build.VERSION.SDK_INT >= 34) {
