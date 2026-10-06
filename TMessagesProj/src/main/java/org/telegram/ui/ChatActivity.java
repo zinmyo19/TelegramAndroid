@@ -3867,6 +3867,11 @@ public class ChatActivity extends BaseFragment implements
         actionBar.setAddToContainer(false);
         actionBar.setCastShadows(false);
         actionBar.setBackground(null);
+        // DZ TG Player TV build 14: dark OLED action bar in TV mode. The bar is
+        // transparent by default and shows the (white) window behind it.
+        if (org.telegram.ui.Components.DzTvHintBar.isTvMode(context)) {
+            actionBar.setBackgroundColor(0xFF0B141F);
+        }
         // actionBar.setOccupyStatusBar(false);
         if (inPreviewMode) {
             actionBar.setBackButtonDrawable(null);
@@ -17397,6 +17402,12 @@ public class ChatActivity extends BaseFragment implements
         dpadSelectedMessageId = messages.get(nextIndex).getId();
         dpadEnsureSelectionVisible();
         updateVisibleRows();
+        // DZ TG Player TV build 14: keep Android focus on the manually-selected
+        // cell so the teal focus ring follows D-pad navigation.
+        BaseCell focusedCell = findMessageCell(dpadSelectedMessageId, false);
+        if (focusedCell != null) {
+            focusedCell.requestFocus();
+        }
         return true;
     }
 
@@ -17459,6 +17470,19 @@ public class ChatActivity extends BaseFragment implements
                     && (messageObject.isVideo() || messageObject.type == MessageObject.TYPE_PHOTO)) {
                 openPhotoViewerForMessage((ChatMessageCell) cell, messageObject);
                 return true;
+            }
+            // DZ TV build 14: D-pad OK on a message with bot inline buttons.
+            // 1 button -> press directly; several -> D-pad-navigable picker.
+            if (getParentActivity() != null && DzTvHintBar.isTvMode(getParentActivity())) {
+                ChatMessageCell msgCell = (ChatMessageCell) cell;
+                int dzBtnCount = msgCell.getDzBotButtonCount();
+                if (dzBtnCount == 1) {
+                    msgCell.dzPressBotButton(0);
+                    return true;
+                } else if (dzBtnCount > 1) {
+                    showDzBotButtonPickerDialog(msgCell);
+                    return true;
+                }
             }
             // DZ TV build 13: D-pad OK on a message with links opens them without a mouse.
             // 1 link -> open directly; several -> D-pad-navigable picker; none -> context menu as before.
@@ -38612,6 +38636,19 @@ public class ChatActivity extends BaseFragment implements
                     messageCell.setShowTopic(true);
                     messageCell.setMessageObject(message, groupedMessages, pinnedBottom, pinnedTop, firstInChat, lastInChatList);
                     messageCell.setSpoilersSuppressed(chatListView.getScrollState() != RecyclerView.SCROLL_STATE_IDLE);
+                    // DZ TG Player TV build 14: bridge native D-pad focus to the manual
+                    // selection id so OK/link/bot-button logic follows focused text messages.
+                    if (getParentActivity() != null && DzTvHintBar.isTvMode(getParentActivity())) {
+                        messageCell.setOnFocusChangeListener((v, hasFocus) -> {
+                            if (hasFocus && v instanceof ChatMessageCell) {
+                                MessageObject focusedMo = ((ChatMessageCell) v).getMessageObject();
+                                if (focusedMo != null && focusedMo.getId() != 0 && focusedMo.getId() != dpadSelectedMessageId) {
+                                    dpadSelectedMessageId = focusedMo.getId();
+                                    updateVisibleRows();
+                                }
+                            }
+                        });
+                    }
                     messageCell.setHighlighted(dpadSelectedMessageId != Integer.MAX_VALUE && message.getId() == dpadSelectedMessageId || highlightMessageId != Integer.MAX_VALUE && message.getId() == highlightMessageId);
                     if (messageCell.isHighlighted() && highlightMessageQuote != null) {
                         final long now = System.currentTimeMillis();
@@ -46569,6 +46606,32 @@ public class ChatActivity extends BaseFragment implements
         builder.setItems(items, (dialog, which) -> {
             if (which >= 0 && which < urls.size() && getParentActivity() != null) {
                 processExternalUrl(0, urls.get(which), null, cell, false, false);
+            }
+        });
+        builder.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
+        showDialog(builder.create());
+    }
+
+    // DZ TG Player TV build 14: D-pad-navigable picker for bot inline-keyboard
+    // buttons (they are drawn, not Views, so they can't take focus directly).
+    private void showDzBotButtonPickerDialog(ChatMessageCell cell) {
+        if (getParentActivity() == null || cell == null) {
+            return;
+        }
+        int count = cell.getDzBotButtonCount();
+        if (count <= 0) {
+            return;
+        }
+        CharSequence[] items = new CharSequence[count];
+        for (int i = 0; i < count; i++) {
+            String t = cell.getDzBotButtonTitle(i);
+            items[i] = t.isEmpty() ? ("Button " + (i + 1)) : t;
+        }
+        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity(), themeDelegate);
+        builder.setTitle("Choose");
+        builder.setItems(items, (dialog, which) -> {
+            if (which >= 0 && which < cell.getDzBotButtonCount()) {
+                cell.dzPressBotButton(which);
             }
         });
         builder.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
