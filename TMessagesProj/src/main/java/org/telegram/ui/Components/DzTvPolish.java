@@ -54,6 +54,20 @@ public class DzTvPolish {
         Theme.setColor(Theme.key_chat_outBubble, BUBBLE_OUT, false);
         Theme.setColor(Theme.key_chat_messageTextIn, TEXT_PRIMARY, false);
         Theme.setColor(Theme.key_chat_messageTextOut, TEXT_PRIMARY, false);
+
+        // --- chat background: pure OLED black (kills the light-green classic
+        // wallpaper in TV mode). Setting the wallpaper keys triggers
+        // Theme.reloadWallpaper so the change applies immediately. ---
+        Theme.setColor(Theme.key_chat_wallpaper, BG_BLACK, false);
+        Theme.setColor(Theme.key_chat_wallpaper_gradient_to1, BG_BLACK, false);
+        Theme.setColor(Theme.key_chat_wallpaper_gradient_to2, BG_BLACK, false);
+        Theme.setColor(Theme.key_chat_wallpaper_gradient_to3, BG_BLACK, false);
+
+        // --- message input panel + misc chat chrome: dark ---
+        Theme.setColor(Theme.key_chat_messagePanelBackground, BG_MIDNIGHT, false);
+        Theme.setColor(Theme.key_chat_messagePanelText, TEXT_PRIMARY, false);
+        Theme.setColor(Theme.key_chat_messagePanelHint, TEXT_SECONDARY, false);
+        Theme.setColor(Theme.key_actionBarDefaultIcon, TEXT_PRIMARY, false);
     }
 
     /** TV chat-list row heights (roomier TeleShield-style rows). */
