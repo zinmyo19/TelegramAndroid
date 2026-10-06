@@ -434,6 +434,9 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         }
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setTheme(R.style.Theme_TMessages);
+        // DZ TG Player TV build 14: TeleShield-style OLED Midnight + teal theme
+        // overrides. TV-mode gated inside; phones are untouched.
+        org.telegram.ui.Components.DzTvPolish.applyTvTheme(this);
         try {
             setTaskDescription(new ActivityManager.TaskDescription(null, null, Theme.getColor(Theme.key_actionBarDefault) | 0xff000000));
         } catch (Throwable ignore) {
