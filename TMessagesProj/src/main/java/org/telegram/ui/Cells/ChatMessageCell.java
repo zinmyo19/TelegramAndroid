@@ -1931,6 +1931,14 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         setClipChildren(false);
         setClipToPadding(false);
 
+        // DZ TG Player TV build 14: D-pad can land on text messages. Without this,
+        // message cells are skipped by D-pad navigation entirely.
+        if (org.telegram.ui.Components.DzTvHintBar.isTvMode(context)) {
+            setFocusable(true);
+            setFocusableInTouchMode(false);
+            setBackgroundResource(R.drawable.dz_tv_focus_highlight);
+        }
+
         backgroundDrawable = new MessageBackgroundDrawable(this);
         avatarImage = new ImageReceiver();
         avatarImage.setAllowLoadingOnAttachedOnly(true);
@@ -26550,6 +26558,41 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
 
     public MessageObject getMessageObject() {
         return messageObjectToSet != null ? messageObjectToSet : currentMessageObject;
+    }
+
+    // DZ TG Player TV build 14: D-pad access to bot inline-keyboard buttons.
+    // BotButtons are drawn (not Views), so expose count/title/press by index.
+    public int getDzBotButtonCount() {
+        return botButtons == null ? 0 : botButtons.size();
+    }
+
+    public String getDzBotButtonTitle(int index) {
+        if (botButtons == null || index < 0 || index >= botButtons.size()) {
+            return "";
+        }
+        BotButton b = botButtons.get(index);
+        if (b == null || b.title == null || b.title.getText() == null) {
+            return "";
+        }
+        return b.title.getText().toString();
+    }
+
+    public void dzPressBotButton(int index) {
+        if (botButtons == null || index < 0 || index >= botButtons.size()) {
+            return;
+        }
+        BotButton button = botButtons.get(index);
+        if (button == null || button.isLocked) {
+            return;
+        }
+        playSoundEffect(SoundEffectConstants.CLICK);
+        if (delegate != null) {
+            if (button.buttonCustom != null) {
+                delegate.didPressCustomBotButton(this, button.buttonCustom);
+            } else if (button.button != null) {
+                delegate.didPressBotButton(this, button.button);
+            }
+        }
     }
 
     @Override
