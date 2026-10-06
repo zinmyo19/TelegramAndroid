@@ -17453,6 +17453,18 @@ public class ChatActivity extends BaseFragment implements
                 openPhotoViewerForMessage((ChatMessageCell) cell, messageObject);
                 return true;
             }
+            // DZ TV build 13: D-pad OK on a message with links opens them without a mouse.
+            // 1 link -> open directly; several -> D-pad-navigable picker; none -> context menu as before.
+            if (getParentActivity() != null && DzTvHintBar.isTvMode(getParentActivity())) {
+                ArrayList<String> dzUrls = getDzAllMessageUrls(messageObject);
+                if (dzUrls.size() == 1) {
+                    processExternalUrl(0, dzUrls.get(0), null, (ChatMessageCell) cell, false, false);
+                    return true;
+                } else if (dzUrls.size() > 1) {
+                    showDzUrlPickerDialog(dzUrls, (ChatMessageCell) cell);
+                    return true;
+                }
+            }
         }
         return createMenu(cell, true, true, cell.getWidth() / 2f, cell.getHeight() / 2f, true);
     }
@@ -46474,10 +46486,11 @@ public class ChatActivity extends BaseFragment implements
         return -1;
     }
 
-    // DZ TV: returns the first URL found in the message (entities first, then plain text), or null.
-    private String getDzFirstMessageUrl(MessageObject messageObject) {
+    // DZ TV: returns ALL URLs found in the message (entities first, then plain text), deduplicated.
+    private ArrayList<String> getDzAllMessageUrls(MessageObject messageObject) {
+        ArrayList<String> urls = new ArrayList<>();
         if (messageObject == null || messageObject.messageOwner == null) {
-            return null;
+            return urls;
         }
         String[] texts = new String[]{messageObject.messageOwner.message, messageObject.caption != null ? messageObject.caption.toString() : null};
         for (int t = 0; t < texts.length; t++) {
@@ -46487,33 +46500,72 @@ public class ChatActivity extends BaseFragment implements
             }
             if (t == 0 && messageObject.messageOwner.entities != null) {
                 for (TLRPC.MessageEntity entity : messageObject.messageOwner.entities) {
+                    String url = null;
                     if (entity instanceof TLRPC.TL_messageEntityTextUrl) {
-                        String url = ((TLRPC.TL_messageEntityTextUrl) entity).url;
-                        if (!TextUtils.isEmpty(url)) {
-                            return url;
-                        }
+                        url = ((TLRPC.TL_messageEntityTextUrl) entity).url;
                     } else if (entity instanceof TLRPC.TL_messageEntityUrl) {
                         try {
                             int start = Math.max(0, entity.offset);
                             int end = Math.min(text.length(), entity.offset + entity.length);
                             if (end > start) {
-                                return text.substring(start, end);
+                                url = text.substring(start, end);
                             }
                         } catch (Exception e) {
                             FileLog.e(e);
                         }
                     }
+                    dzAddUniqueUrl(urls, url);
                 }
             }
             java.util.regex.Matcher m = android.util.Patterns.WEB_URL.matcher(text);
-            if (m.find()) {
+            while (m.find()) {
                 String url = m.group();
                 if (!TextUtils.isEmpty(url)) {
-                    return url.startsWith("http") ? url : "http://" + url;
+                    dzAddUniqueUrl(urls, url.startsWith("http") ? url : "http://" + url);
                 }
             }
         }
-        return null;
+        return urls;
+    }
+
+    // DZ TV: adds url if non-empty and not already present (ignores http(s):// prefix when comparing).
+    private void dzAddUniqueUrl(ArrayList<String> urls, String url) {
+        if (TextUtils.isEmpty(url)) {
+            return;
+        }
+        String key = url.replaceFirst("^https?://", "").toLowerCase();
+        for (int i = 0; i < urls.size(); i++) {
+            if (urls.get(i).replaceFirst("^https?://", "").toLowerCase().equals(key)) {
+                return;
+            }
+        }
+        urls.add(url);
+    }
+
+    // DZ TV: returns the first URL found in the message (entities first, then plain text), or null.
+    private String getDzFirstMessageUrl(MessageObject messageObject) {
+        ArrayList<String> urls = getDzAllMessageUrls(messageObject);
+        return urls.isEmpty() ? null : urls.get(0);
+    }
+
+    // DZ TV build 13: D-pad-navigable list of URLs found in the message — no mouse needed.
+    private void showDzUrlPickerDialog(ArrayList<String> urls, ChatMessageCell cell) {
+        if (getParentActivity() == null || urls == null || urls.isEmpty()) {
+            return;
+        }
+        CharSequence[] items = new CharSequence[urls.size()];
+        for (int i = 0; i < urls.size(); i++) {
+            items[i] = urls.get(i);
+        }
+        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity(), themeDelegate);
+        builder.setTitle("Open Link");
+        builder.setItems(items, (dialog, which) -> {
+            if (which >= 0 && which < urls.size() && getParentActivity() != null) {
+                processExternalUrl(0, urls.get(which), null, cell, false, false);
+            }
+        });
+        builder.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
+        showDialog(builder.create());
     }
 
     public void fillMessageMenu(
